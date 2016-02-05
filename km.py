@@ -3,6 +3,7 @@
 import os
 import sys
 import sysconfig
+import textwrap
 
 platform = sysconfig.get_platform()
 if platform[0:5] == 'linux':
@@ -19,6 +20,7 @@ class Host:
     def __init__(self, host):
         self.host = host
         self.identity = None
+        self.port = 22
         self.unsupported = {}
 
 
@@ -48,16 +50,19 @@ def host_build(file=path + '/.ssh/config'):
             hosts[len(hosts) - 1].user = value
         elif key == 'IdentityFile':
             hosts[len(hosts) - 1].identity = value
+        elif key == 'Port':
+            hosts[len(hosts) - 1].port = value
         else:
             hosts[len(hosts) - 1].unsupported[key] == value
     return hosts
 
 
-def add(hosts, host, hostname, user, identityfile=None):
+def add(hosts, host, hostname, user, identityfile=None, port=22):
     hosts.append(Host(host))
     hosts[len(hosts) - 1].hostname = hostname
     hosts[len(hosts) - 1].user = user
     hosts[len(hosts) - 1].identity = identityfile
+    hosts[len(hosts) - 1].port = port
 
 
 def delete(hosts, host):
@@ -79,10 +84,13 @@ Host {host}
 HostName {hostname}
 User {user}
 IdentityFile {identity}
+Port {port}
 
             '''
             config_file.write(
-                template.format(host=host.host, hostname=host.hostname, user=host.user, identity=host.identity))
+                    textwrap.dedent(
+                        template.format(host=host.host, hostname=host.hostname, user=host.user, identity=host.identity,
+                                        port=host.port)))
             for key in sorted(host.unsupported):
                 config_file.write('%s %s' % (key, host.unsupported(key)))
 
@@ -90,6 +98,7 @@ IdentityFile {identity}
 def install():
     try:
         cwd = os.getcwd()
+        os.popen('rm /usr/local/bin/km')
         os.popen('ln -s %s/km.py /usr/local/bin/km' % (cwd))
         os.popen('chmod +x /usr/local/bin/km')
     except PermissionError:
@@ -119,7 +128,9 @@ delete -- delete a host
             hostname = input('Please input host\'s address:')
             user = input('Please input host\'s user:')
             identityfile = input('Please input host\'s private key (use Absolute path,but support ~):')
-            add(hosts, host, hostname, user, identityfile)
+            port = input('Please input host\'s port(default is 22):') if input(
+                'Please input host\'s port(default is 22):') else 22
+            add(hosts, host, hostname, user, identityfile, port)
             while True:
                 opinion = input('Do you want to add more hosts?[y/n]')
                 if opinion == 'y':
@@ -151,6 +162,9 @@ delete -- delete a host
                     continue
     elif 'install' in sys.argv:
         install()
+        exit(0)
+    elif 'init' in sys.argv:
+        init()
         exit(0)
     else:
         helpmsg = '''
