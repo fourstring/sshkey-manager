@@ -19,7 +19,6 @@ else:
     exit(-1)
 path = '%s' % (prefix + '/' + os.popen('whoami').read().replace('\n', ''))
 
-
 class Host:
     def __init__(self, host):
         self.host = host
